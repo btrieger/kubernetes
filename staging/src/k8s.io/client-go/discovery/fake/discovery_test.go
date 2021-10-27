@@ -17,13 +17,46 @@ limitations under the License.
 package fake_test
 
 import (
+	"errors"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stesting "k8s.io/client-go/testing"
+
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/version"
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 )
 
+func TestFakingDiscoveryReactor(t *testing.T) {
+	client := fakeclientset.NewSimpleClientset()
+	fakeDiscovery, ok := client.Discovery().(*fakediscovery.FakeDiscovery)
+	if !ok {
+		t.Fatalf("couldn't convert Discovery() to *FakeDiscovery")
+	}
+	fakeDiscovery.PrependReactor("*", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, &metav1.APIResourceList{}, errors.New("Error listing objects")
+	})
+
+	_, _, err := client.Discovery().ServerGroupsAndResources()
+	if err == nil {
+		t.Fatalf("expected error: %v", err)
+	}
+	_, err = client.Discovery().ServerVersion()
+	if err == nil {
+		t.Fatalf("expected error: %v", err)
+	}
+	_, err = client.Discovery().ServerResources()
+	if err == nil {
+		t.Fatalf("expected error: %v", err)
+	}
+	_, err = client.Discovery().ServerGroups()
+	if err == nil {
+		t.Fatalf("expected error: %v", err)
+	}
+
+}
 func TestFakingServerVersion(t *testing.T) {
 	client := fakeclientset.NewSimpleClientset()
 	fakeDiscovery, ok := client.Discovery().(*fakediscovery.FakeDiscovery)

@@ -32,7 +32,7 @@ import (
 )
 
 // FakeDiscovery implements discovery.DiscoveryInterface and sometimes calls testing.Fake.Invoke with an action,
-// but doesn't respect the return value if any. There is a way to fake static values like ServerVersion by using the Faked... fields on the struct.
+// but doesn't respect the return value if any. It will, however, respect the returned error if any. There is a way to fake static values like ServerVersion by using the Faked... fields on the struct.
 type FakeDiscovery struct {
 	*testing.Fake
 	FakedServerVersion *version.Info
@@ -45,7 +45,10 @@ func (c *FakeDiscovery) ServerResourcesForGroupVersion(groupVersion string) (*me
 		Verb:     "get",
 		Resource: schema.GroupVersionResource{Resource: "resource"},
 	}
-	c.Invokes(action, nil)
+	_, err := c.Invokes(action, nil)
+	if err != nil {
+		return nil, err
+	}
 	for _, resourceList := range c.Resources {
 		if resourceList.GroupVersion == groupVersion {
 			return resourceList, nil
@@ -82,7 +85,10 @@ func (c *FakeDiscovery) ServerGroupsAndResources() ([]*metav1.APIGroup, []*metav
 		Verb:     "get",
 		Resource: schema.GroupVersionResource{Resource: "resource"},
 	}
-	c.Invokes(action, nil)
+	_, err = c.Invokes(action, nil)
+	if err != nil {
+		return nil, nil, err
+	}
 	return resultGroups, c.Resources, nil
 }
 
@@ -105,7 +111,10 @@ func (c *FakeDiscovery) ServerGroups() (*metav1.APIGroupList, error) {
 		Verb:     "get",
 		Resource: schema.GroupVersionResource{Resource: "group"},
 	}
-	c.Invokes(action, nil)
+	_, err := c.Invokes(action, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	groups := map[string]*metav1.APIGroup{}
 
@@ -146,7 +155,10 @@ func (c *FakeDiscovery) ServerVersion() (*version.Info, error) {
 	action := testing.ActionImpl{}
 	action.Verb = "get"
 	action.Resource = schema.GroupVersionResource{Resource: "version"}
-	c.Invokes(action, nil)
+	_, err := c.Invokes(action, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	if c.FakedServerVersion != nil {
 		return c.FakedServerVersion, nil
